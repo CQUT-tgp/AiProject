@@ -52,6 +52,9 @@ if 'page' not in st.session_state:
 
 # 设置五个页面按钮
 st.sidebar.title('聪明助手喵')
+model_choice = st.sidebar.selectbox('模型选择', ['gpt-3.5-turbo', 'gpt-4'])
+def get_model():
+    return model_choice
 if st.sidebar.button('视频脚本生成', key='video_script'):
     st.session_state.page = '视频脚本生成'
 if st.sidebar.button('文案生成', key='copywriting'):
@@ -95,7 +98,7 @@ if st.session_state.page == '视频脚本生成':
     if submit:
         # 提示已经提交
         with st.spinner('正在生成中...'):
-            title_result, script_result = generate_script(title, viodeo_length, creativity, api_key)
+            title_result, script_result = generate_script(title, viodeo_length, creativity, api_key,model_choice)
         st.success('生成成功')
         st.write('标题:')
         st.write(title_result)
@@ -119,7 +122,7 @@ elif st.session_state.page == '文案生成':
     if submit:
         # 提示已经提交
         with st.spinner('正在生成中...'):
-            result = generate_xiaohongshu(theme, api_key)
+            result = generate_xiaohongshu(theme, api_key,model_choice)
         st.divider()
         left, right = st.columns(2)
 
@@ -158,7 +161,11 @@ elif st.session_state.page == 'ChatGPT':
 
     # 获取用户输入
     prompt = st.chat_input()
-
+    if st.sidebar.button("清空历史记录"):
+        st.session_state['messages'] = [{'role': 'ai', 'content': '你好，我是你的AI助手，有什么可以你帮你的吗？'}]
+        st.session_state['memory'].clear()
+        # 清除页面中的信息
+        st.experimental_rerun()
     if prompt:
         if not openai_api_key:
             st.info('请输入你的OpenAI API Key')
@@ -169,7 +176,7 @@ elif st.session_state.page == 'ChatGPT':
         st.chat_message('human').write(prompt)
 
         with st.spinner('AI正在思考中，请稍等.....'):
-            response = get_chat_response(prompt, st.session_state['memory'], openai_api_key)
+            response = get_chat_response(prompt, st.session_state['memory'], openai_api_key,model_choice)
 
             # 处理AI响应并添加到对话历史
             msg = {'role': 'ai', 'content': response}

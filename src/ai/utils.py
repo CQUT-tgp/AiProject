@@ -41,7 +41,10 @@ u2 = "https://api.openai-hk.com/v1/chat/completions"
 url = u1
 
 de_key = 'hk-trgwr810000562521750852117519c51d05c5a9f65f5b84b'
-def generate_script(subject: str, video_length: int, creativity: float, api_key: str):
+
+
+
+def generate_script(subject: str, video_length: int, creativity: float, api_key: str,model_choice: str):
     title_template = ChatPromptTemplate.from_messages(
         [
             ('human','请为{subject}这个主题的视频想出一个吸引人的标题')
@@ -55,7 +58,7 @@ def generate_script(subject: str, video_length: int, creativity: float, api_key:
     )
     model = ChatOpenAI(
         temperature=creativity,
-        model="gpt-3.5-turbo",
+        model=model_choice,
         base_url=url,
         api_key=api_key
     )
@@ -66,9 +69,9 @@ def generate_script(subject: str, video_length: int, creativity: float, api_key:
     script = script_chain.invoke({'subject': subject, 'video_length': video_length}).content
     return title, script
 
-def generate_xiaohongshu(theme, openai_api_key):
+def generate_xiaohongshu(theme, openai_api_key,model_choice: str):
     model = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model=model_choice,
         base_url=url,
         api_key=openai_api_key
     )
@@ -95,7 +98,7 @@ from langchain.prompts import ChatPromptTemplate,MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationChain
 
-def get_chat_response(prompt,memory,api_key):
+def get_chat_response(prompt,memory,api_key,model_choice: str):
     '''
 
     :param prompt:
@@ -104,7 +107,7 @@ def get_chat_response(prompt,memory,api_key):
     :return:
     '''
     model = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model=model_choice,
         base_url='https://twapi.openai-hk.com/v1/',
         api_key=api_key
     )
