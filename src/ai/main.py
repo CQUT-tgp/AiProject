@@ -16,6 +16,7 @@ from utils import dataframe_agent  # 从utils模块导入后端定义的datafram
 from utils import use_tools
 from langchain.memory import ConversationBufferMemory
 from utils import qa_agent
+from blender_agent import blender_agent_interface
 
 def create_chart(input_data, chart_type):
     """
@@ -42,6 +43,7 @@ k1 = 'sk-6mLVgHQIe5WOwibRSEhCAb0ed7uipfC4QY79mKSmGVNRe2il'
 k2 = 'hk-7kj2dk1000056454cc89ccbedc1c27eb5e4b59bb93de8f61'
 
 k2_2 = 'hk-fy1uy810000564552086bdbbed08ae3911a6e1bd22872e7f'
+k2_3 = 'hk-frl4ld10000562666bfb3e9c08afd2505ffd067c5054cabf'
 api_key =  k2
 
 # 初始化 session_state 中的页面状态
@@ -49,7 +51,7 @@ if 'page' not in st.session_state:
     st.session_state.page = ''
 
 # 设置五个页面按钮
-st.sidebar.title('AI')
+st.sidebar.title('聪明助手喵')
 if st.sidebar.button('视频脚本生成', key='video_script'):
     st.session_state.page = '视频脚本生成'
 if st.sidebar.button('文案生成', key='copywriting'):
@@ -62,6 +64,8 @@ if st.sidebar.button('图表处理', key='chart_processing'):
     st.session_state.page = '图表处理'
 if st.sidebar.button('其他工具', key='tools'):
     st.session_state.page = '其他工具'
+if st.sidebar.button('Blender建模助手', key='blender_agent'):
+    st.session_state.page = 'Blender建模助手'
 
 # 点击切换后显示对应页面内容
 if st.session_state.page == '视频脚本生成':
@@ -136,7 +140,7 @@ elif st.session_state.page == '文案生成':
 
 elif st.session_state.page == 'ChatGPT':
 
-    st.title('🗨 克隆ChatGPT')
+    st.title('ChatGPT')
 
     with st.sidebar:
         openai_api_key = st.text_input('请输入OpenAI API密钥',
@@ -162,7 +166,7 @@ elif st.session_state.page == 'ChatGPT':
 
         # 添加用户消息到对话历史
         st.session_state['messages'].append({'role': 'human', 'content': prompt})
-        st.chat_message(message['role']).write(prompt)
+        st.chat_message('human').write(prompt)
 
         with st.spinner('AI正在思考中，请稍等.....'):
             response = get_chat_response(prompt, st.session_state['memory'], openai_api_key)
@@ -282,6 +286,110 @@ elif st.session_state.page == "其他工具":
     if message:
         response = use_tools(message)
         st.write(response["output"])
+
+elif st.session_state.page == 'Blender建模助手':
+    st.title('🎨 Blender AI建模助手')
+
+    with st.sidebar:
+        openai_api_key = st.text_input('请输入API密钥', value='sk-29f79497c65b44c0b5050c28cd051610', type='password')
+        st.markdown('[获取API密钥](https://api.deepseek.com)')
+    
+    # 初始化会话状态
+    if 'blender_messages' not in st.session_state:
+        st.session_state.blender_messages = []
+    
+    # 功能介绍
+    st.markdown("""
+    ###  功能介绍
+     **几何体生成**: 创建长方体、球体、圆柱体等基础几何形状
+     **材质系统**: 为对象添加颜色材质，支持预定义颜色和自定义RGB
+     **场景管理**: 清理场景中的所有对象
+     **脚本生成**: 自动生成可在Blender中直接运行的Python脚本
+    """)
+    
+    # 快速操作按钮
+    st.markdown("###  快速操作")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    quick_commands = [
+        ("创建长方体", "创建一个长宽高分别为 2,3,4 的长方体"),
+        ("创建球体", "生成一个半径为 1.5 的球体"),
+        ("创建圆柱体", "制作一个半径为 1，高度为 3 的圆柱体"),
+        ("清理场景", "清理场景中的所有对象")
+    ]
+    
+    selected_command = None
+    for i, (button_text, command) in enumerate(quick_commands):
+        with [col1, col2, col3, col4][i]:
+            if st.button(button_text, use_container_width=True):
+                selected_command = command
+    
+    # 输入区域
+    user_input = st.text_input('请输入您的需求：', 
+                              placeholder='例如：创建一个长宽高分别为 2,3,4 的长方体',
+                              value=selected_command if selected_command else '')
+    
+    # 提交按钮
+    submit = st.button('生成', type='primary')
+    
+    # 检查输入和API密钥
+    if submit and not user_input:
+        st.info('请输入您的需求')
+    elif submit and not openai_api_key:
+        st.info('请输入API密钥')
+    elif submit and user_input and openai_api_key:
+        # 添加用户消息到历史
+        st.session_state.blender_messages.append({'role': 'user', 'content': user_input})
+        
+        with st.spinner('🤖 AI正在处理您的请求...'):
+            # 调用blender代理
+            response = blender_agent_interface(openai_api_key, user_input)
+            
+            if response['success']:
+                # 添加助手回复到历史
+                st.session_state.blender_messages.append({'role': 'ai', 'content': response['output']})
+                st.success('✅ 操作完成！')
+                st.write('**AI回复：**')
+                st.write(response['output'])
+                
+                # 检查是否生成了脚本文件
+                if '脚本已生成' in response['output']:
+                    st.info('💡 已生成Blender脚本文件，您可以在Blender中运行此脚本。')
+            else:
+                st.error(f'❌ 处理失败：{response["error"]}')
+                st.session_state.blender_messages.append({'role': 'ai', 'content': f'抱歉，处理失败：{response["error"]}'})
+    
+    # 显示对话历史
+    if st.session_state.blender_messages:
+        with st.expander('💬 对话历史'):
+            for message in st.session_state.blender_messages:
+                if message['role'] == 'user':
+                    st.write(f"**👤 您：** {message['content']}")
+                else:
+                    st.write(f"**🤖 助手：** {message['content']}")
+    
+    # 示例命令
+    with st.expander('📋 示例命令'):
+        st.markdown("""
+        **几何体创建：**
+        - 创建一个长宽高分别为 5,3,2 的长方体
+        - 生成一个半径为 2.5 的球体
+        - 制作一个半径为 1.5，高度为 4 的圆柱体
+        
+        **材质添加：**
+        - 为当前对象添加红色材质
+        - 为对象添加蓝色材质
+        - 添加自定义颜色，RGB值为 0.8,0.2,0.9
+        
+        **场景管理：**
+        - 清理场景中的所有对象
+        - 删除所有材质
+        """)
+    
+    # 清空历史按钮
+    if st.button('🗑️ 清空对话历史'):
+        st.session_state.blender_messages = []
+        st.rerun()
 
 
 
